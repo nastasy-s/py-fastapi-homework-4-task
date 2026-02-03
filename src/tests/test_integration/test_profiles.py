@@ -29,10 +29,7 @@ async def test_create_user_profile_with_fake_s3(
     user.is_active = True
     db_session.add(user)
     await db_session.commit()
-
-    stmt = select(UserModel).where(UserModel.email == "test@mate.com")
-    result = await db_session.execute(stmt)
-    user = result.scalars().first()
+    await db_session.refresh(user)
 
     access_token = jwt_manager.create_access_token({"user_id": user.id})
 
@@ -305,14 +302,10 @@ async def test_inactive_user_cannot_create_profile(
     3. Attempt to create a profile.
     4. Verify that the request fails with 401 Unauthorized and that no profile is created.
     """
-    user = UserModel.create(email="inactive@mate.com", raw_password="TestPassword123!", group_id=1)
-    user.is_active = False
+    user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
     db_session.add(user)
     await db_session.commit()
-
-    stmt = select(UserModel).where(UserModel.email == "inactive@mate.com")
-    result = await db_session.execute(stmt)
-    user = result.scalars().first()
+    await db_session.refresh(user)
 
     access_token = jwt_manager.create_access_token({"user_id": user.id})
 
@@ -361,10 +354,7 @@ async def test_cannot_create_profile_twice(
     user.is_active = True
     db_session.add(user)
     await db_session.commit()
-
-    stmt_user = select(UserModel).where(UserModel.email == "test@mate.com")
-    result_user = await db_session.execute(stmt_user)
-    user = result_user.scalars().first()
+    await db_session.refresh(user)
 
     access_token = jwt_manager.create_access_token({"user_id": user.id})
 
@@ -417,10 +407,7 @@ async def test_profile_creation_fails_on_s3_upload_error(
     user.is_active = True
     db_session.add(user)
     await db_session.commit()
-
-    stmt = select(UserModel).where(UserModel.email == "test@mate.com")
-    result = await db_session.execute(stmt)
-    user = result.scalars().first()
+    await db_session.refresh(user)
 
     access_token = jwt_manager.create_access_token({"user_id": user.id})
 
@@ -460,14 +447,22 @@ async def test_profile_creation_fails_on_s3_upload_error(
     ("John1", "Doe", "John1 contains non-english letters"),
     ("John", "Doe1", "Doe1 contains non-english letters"),
 ])
-async def test_profile_creation_invalid_name(client, jwt_manager, first_name, last_name, expected_error):
+async def test_profile_creation_invalid_name(
+        db_session, client, jwt_manager, first_name, last_name, expected_error
+):
     """
     Test that profile creation fails if the first_name or last_name contains non-English letters.
 
     This test sends a profile creation request with invalid names and expects a 422 response
     with an error message containing the specified error text.
     """
-    access_token = jwt_manager.create_access_token({"user_id": 1})
+    user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
+    user.is_active = True
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    access_token = jwt_manager.create_access_token({"user_id": user.id})
 
     profile_url = "/api/v1/profiles/users/1/profile/"
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -488,7 +483,7 @@ async def test_profile_creation_invalid_name(client, jwt_manager, first_name, la
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_profile_creation_invalid_avatar_format(client, jwt_manager):
+async def test_profile_creation_invalid_avatar_format(db_session, client, jwt_manager):
     """
     Test that profile creation fails if the avatar has an unsupported format.
 
@@ -496,7 +491,13 @@ async def test_profile_creation_invalid_avatar_format(client, jwt_manager):
     which is unsupported. It expects the endpoint to return a 422 status code with an
     error message indicating "Invalid image format".
     """
-    access_token = jwt_manager.create_access_token({"user_id": 1})
+    user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
+    user.is_active = True
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    access_token = jwt_manager.create_access_token({"user_id": user.id})
 
     profile_url = "/api/v1/profiles/users/1/profile/"
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -525,7 +526,13 @@ async def test_profile_creation_avatar_too_large(db_session, client, jwt_manager
     that exceeds the allowed size limit (1MB). It expects the endpoint to return a 422 status code
     with an error message indicating that the image size exceeds the allowed limit.
     """
-    access_token = jwt_manager.create_access_token({"user_id": 1})
+    user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
+    user.is_active = True
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    access_token = jwt_manager.create_access_token({"user_id": user.id})
 
     img = Image.new("RGB", (10000, 10000), color="blue")
     img_bytes = BytesIO()
@@ -550,7 +557,7 @@ async def test_profile_creation_avatar_too_large(db_session, client, jwt_manager
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_profile_creation_invalid_gender(client, jwt_manager):
+async def test_profile_creation_invalid_gender(db_session, client, jwt_manager):
     """
     Test that profile creation fails if gender is invalid.
 
@@ -558,7 +565,13 @@ async def test_profile_creation_invalid_gender(client, jwt_manager):
     It expects the endpoint to return a 422 status code with an error message indicating that
     the gender must be one of the allowed values.
     """
-    access_token = jwt_manager.create_access_token({"user_id": 1})
+    user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
+    user.is_active = True
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    access_token = jwt_manager.create_access_token({"user_id": user.id})
 
     profile_url = "/api/v1/profiles/users/1/profile/"
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -583,14 +596,21 @@ async def test_profile_creation_invalid_gender(client, jwt_manager):
     ("1800-01-01", "Invalid birth date - year must be greater than 1900."),
     ("2010-01-01", "You must be at least 18 years old to register."),
 ])
-async def test_profile_creation_invalid_birth_date(client, jwt_manager, birth_date, expected_error):
+async def test_profile_creation_invalid_birth_date(db_session, client, jwt_manager, birth_date, expected_error):
     """
     Test that profile creation fails if birth_date is invalid.
 
     This test sends a profile creation request with an invalid birth_date value and expects
     the endpoint to return a 422 status code along with an appropriate error message.
     """
-    access_token = jwt_manager.create_access_token({"user_id": 1})
+    user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
+    user.is_active = True
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    access_token = jwt_manager.create_access_token({"user_id": user.id})
+
     profile_url = "/api/v1/profiles/users/1/profile/"
     headers = {"Authorization": f"Bearer {access_token}"}
     files = {
@@ -610,14 +630,21 @@ async def test_profile_creation_invalid_birth_date(client, jwt_manager, birth_da
 @pytest.mark.asyncio
 @pytest.mark.unit
 @pytest.mark.parametrize("info_value", ["", "   "])
-async def test_profile_creation_empty_info(client, jwt_manager, info_value):
+async def test_profile_creation_empty_info(db_session, client, jwt_manager, info_value):
     """
     Test that profile creation fails if the info field is empty or contains only spaces.
 
     This test sends a profile creation request with an invalid info value and expects
     a 422 response with an error message indicating that the info field cannot be empty.
     """
-    access_token = jwt_manager.create_access_token({"user_id": 1})
+    user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
+    user.is_active = True
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    access_token = jwt_manager.create_access_token({"user_id": user.id})
+
     profile_url = "/api/v1/profiles/users/1/profile/"
     headers = {"Authorization": f"Bearer {access_token}"}
     files = {
