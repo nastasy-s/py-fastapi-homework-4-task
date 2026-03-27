@@ -135,7 +135,7 @@ async def register_user(
             email_sender.send_activation_email,
             str(new_user.email),
             activation_link
-        )    
+        )
         return UserRegistrationResponseSchema.model_validate(new_user)
 
 
@@ -405,7 +405,7 @@ async def reset_password(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while resetting the password."
         )
-    
+
     login_link = "http://127.0.0.1/accounts/login/"
     background_tasks.add_task(
         email_sender.send_password_reset_complete_email,

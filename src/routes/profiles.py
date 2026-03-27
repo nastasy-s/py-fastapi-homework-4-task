@@ -50,13 +50,11 @@ async def create_profile(
         s3_client: S3StorageInterface = Depends(get_s3_storage_client),
 ) -> ProfileResponseSchema:
 
-
     try:
         decoded = jwt_manager.decode_access_token(token)
         token_user_id = decoded.get("user_id")
     except BaseSecurityError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-
 
     try:
         validate_name(first_name)
@@ -89,7 +87,6 @@ async def create_profile(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or not active."
         )
-
 
     stmt = select(UserProfileModel).where(UserProfileModel.user_id == user_id)
     result = await db.execute(stmt)
