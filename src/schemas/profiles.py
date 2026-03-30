@@ -44,7 +44,7 @@ class ProfileCreateRequestSchema(BaseModel):
     @classmethod
     def validate_info(cls, value: str) -> str:
         if not value or not value.strip():
-            raise ValueError("Info cannot be empty or consist only of spaces.")
+            raise ValueError("Info field cannot be empty or contain only spaces.")
         return value
 
     @field_validator("avatar")
